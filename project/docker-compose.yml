@@ -1,0 +1,105 @@
+# docker-compose.yml
+# Orchestration des services BruteScope – Groupe 20 UNIKIN 2026
+#
+# Services :
+#   - target   : serveur web vulnérable (port 8080)
+#   - api      : API Flask + moteur Hydra (port 5000)
+#   - frontend : dashboard web via nginx (port 3000)
+#
+# Utilisation :
+#   docker-compose up --build -d     # Construire et démarrer
+#   docker-compose ps                # Vérifier l'état
+#   docker-compose logs -f api       # Logs de l'API en temps réel
+#   docker-compose down              # Arrêter et supprimer les containers
+
+networks:
+  bf_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24
+
+volumes:
+  wordlists_data:
+
+services:
+
+  # ── Serveur cible vulnérable ──────────────────────────────────────────────
+  target:
+    build:
+      context: ./target
+      dockerfile: Dockerfile
+    container_name: bf_target
+    hostname: target
+    ports:
+      - "8081:8080"
+    networks:
+      bf_net:
+        ipv4_address: 172.20.0.10
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python3", "-c",
+             "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    labels:
+      - "com.brutescope.role=target"
+      - "com.brutescope.warning=FOR EDUCATIONAL USE ONLY"
+
+  # ── API Flask + Hydra ──────────────────────────────────────────────────────
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: bf_api
+    hostname: api
+    ports:
+      - "5055:5000"
+    depends_on:
+      target:
+        condition: service_healthy
+    environment:
+      - TARGET_HOST=172.20.0.10
+      - TARGET_PORT=8080
+      - FLASK_ENV=production
+      - PYTHONUNBUFFERED=1      # Important pour voir les logs en temps réel
+    volumes:
+      - ./api/wordlists:/app/wordlists:ro   # Monté en lecture seule (sécurité)
+    networks:
+      bf_net:
+        ipv4_address: 172.20.0.20
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:5000/api/status"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    labels:
+      - "com.brutescope.role=api"
+
+  # ── Dashboard web (nginx) ──────────────────────────────────────────────────
+  frontend:
+    image: nginx:alpine
+    container_name: bf_frontend
+    hostname: frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - api
+    volumes:
+      - ./frontend:/usr/share/nginx/html:ro
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    networks:
+      bf_net:
+        ipv4_address: 172.20.0.30
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:80/"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    labels:
+      - "com.brutescope.role=frontend"

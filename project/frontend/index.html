@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BruteScope – Testeur Authentification Web | Groupe 20</title>
+
+  <!-- Polices -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Exo+2:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+  <!-- Feuille de styles externe -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════
+     HEADER / BARRE DE STATUT
+═══════════════════════════════════════════════════════════ -->
+<header class="topbar">
+  <div class="logo">BRUTE<span class="danger">SCOPE</span>
+    <span style="color:var(--muted);font-size:.65rem;margin-left:.6rem;">v1.0 · Groupe 20</span>
+  </div>
+
+  <div class="topbar-meta">
+    <div class="status-indicator">
+      <div class="dot" id="statusDot"></div>
+      <span id="statusText">INACTIF</span>
+    </div>
+    <span>API :&nbsp;<span id="apiStatus" style="color:var(--amber);">—</span></span>
+    <span>UNIKIN 2026</span>
+  </div>
+</header>
+
+<!-- ═══════════════════════════════════════════════════════
+     MISE EN PAGE PRINCIPALE
+═══════════════════════════════════════════════════════════ -->
+<div class="layout">
+
+  <!-- ─── SIDEBAR : Configuration ──────────────────────── -->
+  <aside class="sidebar">
+
+    <!-- Configuration de l'attaque -->
+    <div class="panel">
+      <div class="panel-header">
+        ⚙️&nbsp; CONFIGURATION DE L'ATTAQUE
+        <span class="badge">HYDRA HTTP</span>
+      </div>
+      <div class="panel-body">
+
+        <div class="field">
+          <label>IP Cible</label>
+          <input type="text" id="targetIp" value="target" placeholder="target">
+        </div>
+
+        <div class="field">
+          <label>Port</label>
+          <input type="number" id="targetPort" value="8080" min="1" max="65535">
+        </div>
+
+        <div class="field">
+          <label>URL de Login (formulaire POST)</label>
+          <input type="text" id="loginUrl" value="/login" placeholder="/auth/signin">
+        </div>
+
+        <div class="field">
+          <label>Utilisateur cible</label>
+          <input type="text" id="username" value="admin" placeholder="admin">
+        </div>
+
+        <div class="field">
+          <label>Dictionnaire de mots de passe</label>
+          <select id="wordlist">
+            <option value="common.txt">common.txt (50 entrées)</option>
+            <option value="rockyou_mini.txt">rockyou_mini.txt (155 entrées)</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>Message d'échec (F=)</label>
+          <input type="text" id="failString" value="Invalid credentials" placeholder="Login failed">
+        </div>
+
+        <div class="field">
+          <label>Threads parallèles</label>
+          <input type="range" id="threads" min="1" max="16" value="4"
+                 oninput="document.getElementById('threadsVal').textContent=this.value">
+          <span class="threads-display">Threads : <span id="threadsVal">4</span></span>
+        </div>
+
+        <!-- Message d'alerte -->
+        <div id="alertBox" class="alert"></div>
+
+        <!-- Boutons Start / Stop -->
+        <div class="btn-group">
+          <button class="btn btn-start" id="startBtn" onclick="startAttack()">
+            ▶ START
+          </button>
+          <button class="btn btn-stop" id="stopBtn" onclick="stopAttack()" disabled>
+            ■ STOP
+          </button>
+        </div>
+
+        <button class="btn btn-secondary" id="clearBtn" onclick="clearAll()">
+          ↺ Réinitialiser
+        </button>
+
+      </div>
+    </div>
+
+    <!-- Commande Hydra générée -->
+    <div class="panel">
+      <div class="panel-header">💻&nbsp; COMMANDE HYDRA GÉNÉRÉE</div>
+      <div class="panel-body">
+        <pre id="hydraCmd" class="hydra-cmd"></pre>
+      </div>
+    </div>
+
+    <!-- Avertissement éthique -->
+    <div class="panel ethics-panel">
+      <div class="panel-header">⚠️&nbsp; CADRE ÉTHIQUE &amp; LÉGAL</div>
+      <div class="panel-body">
+        <p class="ethics-text">
+          Cet outil est <strong>strictement éducatif</strong>.
+          Toutes les simulations doivent être effectuées sur des systèmes dont vous possédez
+          l'autorisation explicite de tester.<br><br>
+          Toute utilisation contre des systèmes tiers est
+          <span class="danger"><strong>illégale</strong></span> (Article 323-1 du Code pénal).
+          <br><br>
+          <span style="color:var(--blue)">Projet-SEC-20-2026-M1</span>
+        </p>
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- ─── CONTENU PRINCIPAL ──────────────────────────── -->
+  <main class="main-content">
+
+    <!-- Statistiques -->
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-value" id="sTotal">0</div>
+        <div class="stat-label">Total tentatives</div>
+      </div>
+      <div class="stat-card" id="statSuccess">
+        <div class="stat-value green" id="sSuccess">0</div>
+        <div class="stat-label">Succès trouvés</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value amber" id="sRate">0.0</div>
+        <div class="stat-label">Req / seconde</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value red" id="sElapsed">0s</div>
+        <div class="stat-label">Durée écoulée</div>
+      </div>
+    </div>
+
+    <!-- Barre de progression -->
+    <div class="progress-section">
+      <div class="progress-meta">
+        <span id="progressLabel">PROGRESSION DU DICTIONNAIRE</span>
+        <span id="progressPct">0%</span>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+    </div>
+
+    <!-- Graphique temps réel -->
+    <div class="panel">
+      <div class="panel-header">
+        📈&nbsp; DÉBIT EN TEMPS RÉEL
+        <span style="color:var(--muted);font-size:.68rem;">tentatives/sec · succès cumulés</span>
+      </div>
+      <div class="chart-container">
+        <canvas id="rateChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Live Feed -->
+    <div class="panel" style="flex:1;">
+      <div class="panel-header">
+        📋&nbsp; LIVE FEED – TENTATIVES EN TEMPS RÉEL
+        <span class="badge" id="feedCount">0 entrées</span>
+      </div>
+      <div class="feed-container">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>HORODATAGE</th>
+              <th>UTILISATEUR</th>
+              <th>MOT DE PASSE TESTÉ</th>
+              <th>RÉSULTAT</th>
+            </tr>
+          </thead>
+          <tbody id="feedBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Credentials trouvés -->
+    <div class="panel">
+      <div class="panel-header" style="color:var(--green);">
+        🔑&nbsp; CREDENTIALS TROUVÉS
+      </div>
+      <div class="panel-body">
+        <div id="successList">
+          <span class="empty-msg">Aucun succès pour le moment…</span>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     FOOTER
+═══════════════════════════════════════════════════════════ -->
+<footer class="footer">
+  <span>
+    GROUPE 20 ·
+    LABEM KAPINGA K. · LUEDI KAHUMA D. · HESHIMA BARAHA J. ·
+    MUMBERE MITHIMBO D. · TANDU KIKALANGA N.
+  </span>
+  <span class="warning">⚠️ USAGE ÉDUCATIF UNIQUEMENT – Environnement contrôlé local</span>
+</footer>
+
+<!-- Script principal externe -->
+<script src="app.js"></script>
+
+</body>
+</html>

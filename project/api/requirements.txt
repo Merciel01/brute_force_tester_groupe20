@@ -1,0 +1,7 @@
+# requirements.txt – Dépendances Python de l'API BruteScope
+# Installer avec : pip install -r requirements.txt
+
+flask==3.0.0
+flask-cors==4.0.0
+flask-limiter==3.5.0
+Werkzeug==3.0.1
