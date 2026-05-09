@@ -118,8 +118,9 @@ def health():
 
 # ─── Point d'entrée ───────────────────────────────────────────────────────────
 if __name__ == '__main__':
+    port = int(os.getenv("TARGET_APP_PORT", os.getenv("PORT", "8080")))
     print("=" * 60)
     print("  SERVEUR CIBLE VULNÉRABLE – PORT 8080")
     print("  USAGE STRICTEMENT ÉDUCATIF ET EN ENVIRONNEMENT LOCAL")
     print("=" * 60)
-    app.run(host='0.0.0.0', port=8080, debug=False, threaded=True)
+    app.run(host='0.0.0.0', port=port, debug=False, threaded=True)

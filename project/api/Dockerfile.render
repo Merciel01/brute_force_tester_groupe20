@@ -1,0 +1,31 @@
+FROM kalilinux/kali-rolling:latest
+
+LABEL maintainer="Groupe 20 - UNIKIN 2026"
+LABEL description="BruteScope Render service - API, dashboard and local target"
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      hydra \
+      python3 \
+      python3-pip \
+      python3-dev \
+      curl \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY project/api/requirements.txt ./requirements.txt
+RUN pip3 install --no-cache-dir --break-system-packages -r requirements.txt
+
+COPY project/api/app.py ./app.py
+COPY project/api/hydra_engine.py ./hydra_engine.py
+COPY project/api/wordlists/ ./wordlists/
+COPY project/frontend/ ./frontend/
+COPY project/target/target_app.py ./target_app.py
+COPY project/api/start_render.sh ./start_render.sh
+
+RUN chmod +x ./start_render.sh
+
+EXPOSE 10000
+
+CMD ["./start_render.sh"]

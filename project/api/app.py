@@ -27,7 +27,12 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-app = Flask(__name__, static_folder="../frontend", static_url_path="")
+FRONTEND_DIR = os.getenv(
+    "FRONTEND_DIR",
+    os.path.abspath(os.path.join(os.path.dirname(__file__), "../frontend")),
+)
+
+app = Flask(__name__, static_folder=FRONTEND_DIR, static_url_path="")
 CORS(app, resources={r"/api/*": {"origins": "*"}, r"/stream": {"origins": "*"}})
 
 # Rate limiting sur l'API de contrôle (pas sur le stream)
@@ -267,6 +272,7 @@ def stream():
 # POINT D'ENTRÉE
 # ═══════════════════════════════════════════════════════════════
 if __name__ == "__main__":
+    port = int(os.getenv("PORT", "5000"))
     print("=" * 60)
     print("  BRUTESCOPE API – PORT 5000")
     print("  Dashboard : http://localhost:5000")
@@ -275,7 +281,7 @@ if __name__ == "__main__":
     print("=" * 60)
     app.run(
         host="0.0.0.0",
-        port=5000,
+        port=port,
         debug=False,
         threaded=True,      # Requis pour SSE + requêtes simultanées
         use_reloader=False,

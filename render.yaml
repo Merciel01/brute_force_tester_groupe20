@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: brutescope-groupe20
+    env: docker
+    plan: free
+    region: oregon
+    dockerfilePath: ./project/api/Dockerfile.render
+    healthCheckPath: /api/status
+    envVars:
+      - key: TARGET_HOST
+        value: 127.0.0.1
+      - key: TARGET_PORT
+        value: "8080"
+      - key: TARGET_APP_PORT
+        value: "8080"
+      - key: ALLOWED_TARGETS
+        value: 127.0.0.1,localhost
+      - key: ALLOW_EXTERNAL_TARGETS
+        value: "false"
+      - key: FLASK_ENV
+        value: production
+      - key: PYTHONUNBUFFERED
+        value: "1"
